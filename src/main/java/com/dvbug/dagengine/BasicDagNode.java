@@ -71,7 +71,11 @@ abstract class BasicDagNode implements DagNode {
      * 在开关策略中使用
      */
     protected void abort() {
-        throw new DagAbortException();
+        throw abortError();
+    }
+
+    protected DagAbortException abortError() {
+        return new DagAbortException();
     }
 
     @Override

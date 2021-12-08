@@ -1,6 +1,7 @@
 package com.dvbug.dagengine;
 
 import io.github.avivcarmis.javared.executor.RedSynchronizer;
+import io.github.avivcarmis.javared.future.RedFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -12,7 +13,7 @@ import java.util.stream.Collectors;
  * DAG图调度同步器, 线程安全的
  */
 @Slf4j
-public class DagGraphSynchronizer extends RedSynchronizer<GraphData, GraphData> {
+final class DagGraphSynchronizer extends RedSynchronizer<GraphData, GraphData> {
     private static final ScheduledExecutorService SCHEDULER = Executors.newScheduledThreadPool(24);
 
     /**
@@ -59,12 +60,19 @@ public class DagGraphSynchronizer extends RedSynchronizer<GraphData, GraphData> 
         Result<GraphData> currentChain = appendChain(chain, node);
         List<DagNode> children = graph.getNodeChildren(node);
         if (children.isEmpty()) { //终止节点
-            return currentChain;
+            // fix 在最终结果中把自己加入到History中
+            return ifResult(currentChain).succeed().produce(GraphData.class).byExecuting(r-> {
+                GraphData newResultWithFinalHistory =
+                        r.isSucceed() ?  GraphData.ofSucceed(r.getResult()) :  GraphData.ofFailure((Throwable) r.getResult());
+                newResultWithFinalHistory.cloneHistory(r).setNodeName(r.getNodeName());
+                r.getHistory().clear();
+                newResultWithFinalHistory.pushHistory(r);
+                return newResultWithFinalHistory;
+            });
         } else if (children.size() == 1) { //单出边情况
             return buildDeepin(currentChain, children.get(0));
         } else { //多出边情况
             //构建下游多子路径触发执行,选者一个有效的执行结果再构建路径返回
-            log.trace("build sub synchronizer for {} node", node.getName());
 
             // 构建闭包函数, 在execute运行时将node的输出作为子路径的输入
             java.util.function.Function<GraphData, Result<GraphData>> subF = (input) -> {

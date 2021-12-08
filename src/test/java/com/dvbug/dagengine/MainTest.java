@@ -1,29 +1,32 @@
 package com.dvbug.dagengine;
 
-import com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import io.github.avivcarmis.javared.future.RedFutureOf;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class MainTest {
 
-    private static final ExecutorService POOL = Executors.newFixedThreadPool(24);
-    private static final Gson GsonUtil = new GsonBuilder()
-            .registerTypeAdapter(new TypeToken<Class<?>>() {
-            }.getType(), new GenericClassTypeAdapter())
-            .create();
-
+    static final ExecutorService POOL = Executors.newFixedThreadPool(24);
 
     final static DagGraph graph = new DagGraph("graph123");
+    static String RESULT_CHECK_VAL;
+
+    static void assertPass(GraphData result) {
+        Assertions.assertNotNull(result);
+        Assertions.assertNotNull(result.getResult());
+        Assertions.assertTrue((result.getResult() instanceof String) && ((String) result.getResult()).contains(RESULT_CHECK_VAL),
+                String.format("actual result '%s' not contains key result '%s'", result.getResult(), RESULT_CHECK_VAL));
+    }
 
     @Getter
     @Setter
@@ -54,9 +57,8 @@ public class MainTest {
             super.doExecute(input);
             if (input.isSucceed()) {
                 return GraphData.ofSucceed(String.format("%s+%s", input.getResult(), getName()));
-            } else {
-                return GraphData.ofFailure(((Throwable) input.getResult()));
             }
+            throw abortError();
         }
     }
 
@@ -77,6 +79,8 @@ public class MainTest {
 
         s1.setThrowable(true);
         i2.setThrowable(true);
+        RESULT_CHECK_VAL = "+i1+s4+s5+s6";
+
         //s4.setThrowable(true);
         //s5.setThrowable(true);
         //s6.setThrowable(true);
@@ -108,55 +112,49 @@ public class MainTest {
         graph.addEdge(finalS, s6);
         //endregion
 
-        log.info(graph.getAdjacentMatrix().print());
+        System.out.println(graph.getAdjacentMatrix().print());
     }
 
-    private void exe(DagGraphSynchronizer synchronizer, GraphData param) {
-        RedFutureOf<GraphData> haha = synchronizer.execute(param);
-        try {
-            GraphData result = haha.get(1000, TimeUnit.MILLISECONDS);
-            //log.info("finalResult: {}, history: \n{}", result, Arrays.stream(synchronizer.getHistory()).map(StrategyData::toString).collect(Collectors.joining("\n")));
-            log.info("finalResult: {}", result);
-            if (null != result) {
-                System.out.println(result.getHistory().stream().map(GsonUtil::toJson).collect(Collectors.joining("\n")));
-            }
-            if (null != result && !result.isSucceed()) {
-                log.error("err:", (Throwable) result.getResult());
-            }
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        } catch (TimeoutException e) {
-            e.printStackTrace();
+    @SneakyThrows
+    private void exe(DagGraphExecutor executor, GraphData param) {
+        GraphData result = executor.execute(param, 100);
+        assertPass(result);
+        System.out.printf("result:%n%s%n", result);
+        if (null != result) {
+            System.out.printf("history:%n%s%n", result.getHistory().stream().map(GraphData::toString).collect(Collectors.joining("\n")));
+        }
+        if (null != result && !result.isSucceed()) {
+            ((Throwable) result.getResult()).printStackTrace();
         }
     }
 
     @Test
     public void test() {
-        DagGraphSynchronizer synchronizer = new DagGraphSynchronizer(graph);
+        DagGraphExecutor executor = new DagGraphExecutor(graph);
         GraphData param = GraphData.ofInputParam("Haha");
-        exe(synchronizer, param);
+        exe(executor, param);
     }
 
 
     @Test
     public void test2() {
-        DagGraphSynchronizer synchronizer = new DagGraphSynchronizer(graph);
+        DagGraphExecutor executor = new DagGraphExecutor(graph);
 
         for (int i = 0; i < 10000; i++) {
             GraphData param = GraphData.ofInputParam("Haha" + i);
-            exe(synchronizer, param);
+            exe(executor, param);
         }
     }
 
     @Test
     public void test3() {
-        DagGraphSynchronizer synchronizer = new DagGraphSynchronizer(graph);
+        DagGraphExecutor executor = new DagGraphExecutor(graph);
 
-        for (int i = 0; i < 5000; i++) {
+        for (int i = 0; i < 10000; i++) {
             final int N = i;
             POOL.submit(() -> {
                 GraphData param = GraphData.ofInputParam("Haha" + N);
-                exe(synchronizer, param);
+                exe(executor, param);
             });
         }
 
@@ -164,7 +162,8 @@ public class MainTest {
         try {
             POOL.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
         } catch (InterruptedException e) {
-            log.error("Test thread pool await error", e);
+            System.err.printf("Test thread pool await error: %n");
+            e.printStackTrace();
         }
     }
 }
