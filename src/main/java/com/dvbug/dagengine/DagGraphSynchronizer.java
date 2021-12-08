@@ -15,13 +15,12 @@ import java.util.stream.Collectors;
 @Slf4j
 final class DagGraphSynchronizer extends RedSynchronizer<GraphData, GraphData> {
     private static final ScheduledExecutorService SCHEDULER = Executors.newScheduledThreadPool(24);
-
+    private static final SubChainSynchronizer SUB_CHAIN_SYNCHRONIZER = new SubChainSynchronizer();
     /**
      * 内部子路径同步器
      */
-    @RequiredArgsConstructor
     static class SubChainSynchronizer extends RedSynchronizer<GraphData, GraphData> {
-        private final java.util.function.Function<GraphData, Result<GraphData>> subChain;
+        private static java.util.function.Function<GraphData, Result<GraphData>> subChain;
 
         @Override
         protected Result<GraphData> handle(GraphData graphData) {
@@ -73,9 +72,9 @@ final class DagGraphSynchronizer extends RedSynchronizer<GraphData, GraphData> {
             return buildDeepin(currentChain, children.get(0));
         } else { //多出边情况
             //构建下游多子路径触发执行,选者一个有效的执行结果再构建路径返回
-
+            log.trace("build sub synchronizer for {} node", node.getName());
             // 构建闭包函数, 在execute运行时将node的输出作为子路径的输入
-            java.util.function.Function<GraphData, Result<GraphData>> subF = (input) -> {
+            SubChainSynchronizer.subChain = (input) -> {
                 Result<GraphData> subRoot = produce(GraphData.class).byExecuting(() -> input);
 
                 Result[] subChains = children.stream().map(c -> buildDeepin(subRoot, c)).toArray(Result[]::new);
@@ -101,7 +100,7 @@ final class DagGraphSynchronizer extends RedSynchronizer<GraphData, GraphData> {
                     // 使用SubChainSynchronizer是因为,无法在 byExecuting 阶段内
                     // 将 Result<StrategyData> 对象转化为 StrategyData 或 Future<StrategyData>
                     // Result._future 对象只能在 SubChainSynchronizer 内部获取
-                    .byExecuting(new SubChainSynchronizer(subF)::execute);
+                    .byExecuting(SUB_CHAIN_SYNCHRONIZER::execute);
         }
     }
 
