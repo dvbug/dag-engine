@@ -4,6 +4,7 @@ import com.dvbug.dagengine.graph.DagGraph;
 import com.dvbug.dagengine.graph.DagNode;
 import com.dvbug.dagengine.graph.GraphData;
 import com.dvbug.javared.executor.RedSynchronizer;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
@@ -16,14 +17,13 @@ import java.util.stream.Collectors;
 @Slf4j
 final class StrategyGraphSynchronizer extends RedSynchronizer<ExecuteContext, ExecuteContext> {
     private static final ScheduledExecutorService SCHEDULER = Executors.newScheduledThreadPool(24);
-    private static final SubChainSynchronizer SUB_CHAIN_SYNCHRONIZER = new SubChainSynchronizer();
 
     /**
      * 内部子路径同步器
      */
+    @RequiredArgsConstructor
     static class SubChainSynchronizer extends RedSynchronizer<ExecuteContext, ExecuteContext> {
-        private static java.util.function.Function<ExecuteContext, Result<ExecuteContext>> subChain;
-
+        final java.util.function.Function<ExecuteContext, Result<ExecuteContext>> subChain;
         @Override
         protected Result<ExecuteContext> handle(ExecuteContext ExecuteContext) {
             return subChain.apply(ExecuteContext);
@@ -72,7 +72,7 @@ final class StrategyGraphSynchronizer extends RedSynchronizer<ExecuteContext, Ex
             //构建下游多子路径触发执行,选者一个有效的执行结果再构建路径返回
             //log.trace("build sub synchronizer for {} node", node.getName());
             // 构建闭包函数, 在execute运行时将node的输出作为子路径的输入
-            SubChainSynchronizer.subChain = (input) -> {
+            java.util.function.Function<ExecuteContext, Result<ExecuteContext>> subF = (input) -> {
                 Result<ExecuteContext> subRoot = produce(ExecuteContext.class).byExecuting(() -> input);
 
                 Result[] subChains = children.stream().map(c -> buildDeepin(subRoot, c)).toArray(Result[]::new);
@@ -85,7 +85,7 @@ final class StrategyGraphSynchronizer extends RedSynchronizer<ExecuteContext, Ex
                     // 使用SubChainSynchronizer是因为,无法在 byExecuting 阶段内
                     // 将 Result<StrategyData> 对象转化为 StrategyData 或 Future<StrategyData>
                     // Result._future 对象只能在 SubChainSynchronizer 内部获取
-                    .byExecuting(SUB_CHAIN_SYNCHRONIZER::execute);
+                    .byExecuting(new SubChainSynchronizer(subF)::execute);
         }
     }
 
