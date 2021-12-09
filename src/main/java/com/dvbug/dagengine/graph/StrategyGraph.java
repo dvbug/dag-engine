@@ -1,4 +1,4 @@
-package com.dvbug.dagengine;
+package com.dvbug.dagengine.graph;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -13,12 +13,10 @@ import java.util.*;
  */
 @Getter
 @RequiredArgsConstructor
-public class DagGraph {
+public class StrategyGraph implements DagGraph {
     private final String graphId;
     private int edgeCount = 0;
-    @Getter(AccessLevel.PACKAGE)
     private DagNode rootS;
-    @Getter(AccessLevel.PACKAGE)
     private DagNode finalS;
     @Getter(AccessLevel.NONE)
     private final Set<DagNode> nodes = new HashSet<>();
@@ -95,14 +93,15 @@ public class DagGraph {
     }
 
 
-    boolean isWhole() {
+    @Override
+    public boolean isWhole() {
         return null != rootS && null != finalS && nodes.size() >= 2;
     }
 
     /**
      * 获取DAG图的全部可达路径
      */
-    List<List<DagNode>> getPaths() {
+    public List<List<DagNode>> getPaths() {
         if (null != paths) return paths;
 
         paths = new ArrayList<>();
@@ -116,6 +115,7 @@ public class DagGraph {
      * @param node 需要查询的节点
      * @return 下游节点列表
      */
+    @Override
     public List<DagNode> getNodeChildren(DagNode node) {
         return new ArrayList<>(this.children.getOrDefault(node, new HashSet<>()));
     }
@@ -133,11 +133,11 @@ public class DagGraph {
     class PathGenerator {
         Stack<DagNode> nodes = new Stack<>();
 
-        public PathGenerator(DagGraph graph) {
+        public PathGenerator(StrategyGraph graph) {
             find(getRootS(), graph);
         }
 
-        private void find(DagNode node, DagGraph graph) {
+        private void find(DagNode node, StrategyGraph graph) {
             nodes.push(node);
             Set<DagNode> children = graph.children.getOrDefault(node, new HashSet<>());
             if (!children.isEmpty()) {
@@ -158,12 +158,12 @@ public class DagGraph {
      * 内部类 DAG邻接矩阵
      */
     @Getter
-    class AdjacentMatrix {
+    public class AdjacentMatrix {
         private final String graphId;
         private final DagNode[] nodes;
         private final int[][] matrix;
 
-        AdjacentMatrix(DagGraph graph) {
+        AdjacentMatrix(StrategyGraph graph) {
             this.graphId = graph.getGraphId();
             Pair<DagNode[], int[][]> pair = buildAdjacencyMatrix(graph);
             this.nodes = pair.getLeft();
@@ -188,7 +188,7 @@ public class DagGraph {
             return builder.toString();
         }
 
-        private Pair<DagNode[], int[][]> buildAdjacencyMatrix(DagGraph graph) {
+        private Pair<DagNode[], int[][]> buildAdjacencyMatrix(StrategyGraph graph) {
             DagNode[] nodes = graph.nodes.toArray(new DagNode[0]);
             int size = nodes.length;
             int[][] matrix = new int[size][size];

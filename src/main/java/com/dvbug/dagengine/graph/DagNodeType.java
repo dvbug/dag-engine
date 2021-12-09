@@ -1,4 +1,4 @@
-package com.dvbug.dagengine;
+package com.dvbug.dagengine.graph;
 
 /**
  * DAG图节点类型

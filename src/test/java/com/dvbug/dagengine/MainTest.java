@@ -1,5 +1,8 @@
 package com.dvbug.dagengine;
 
+import com.dvbug.dagengine.executor.DagGraphExecutor;
+import com.dvbug.dagengine.executor.ExecuteResult;
+import com.dvbug.dagengine.graph.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
@@ -18,7 +21,7 @@ public class MainTest {
 
     static final ExecutorService POOL = Executors.newFixedThreadPool(24);
 
-    final static DagGraph graph = new DagGraph("graph123");
+    final static StrategyGraph graph = new StrategyGraph("graph123");
     static String RESULT_CHECK_VAL;
 
     static void assertPass(GraphData result) {
@@ -117,14 +120,14 @@ public class MainTest {
 
     @SneakyThrows
     private void exe(DagGraphExecutor executor, GraphData param) {
-        GraphData result = executor.execute(param, 100);
-        assertPass(result);
-        System.out.printf("result:%n%s%n", result);
-        if (null != result) {
-            System.out.printf("history:%n%s%n", result.getHistory().stream().map(GraphData::toString).collect(Collectors.joining("\n")));
+        ExecuteResult<GraphData> result = executor.execute(param, 100);
+        assertPass(result.getData());
+        System.out.printf("result:%n%s%n", result.getData());
+        if (!result.getHistory().isEmpty()) {
+            System.out.printf("history:%n%s%n", result.getHistory().stream().map(ExecuteResult.History::toString).collect(Collectors.joining("\n")));
         }
-        if (null != result && !result.isSucceed()) {
-            ((Throwable) result.getResult()).printStackTrace();
+        if (!result.getData().isSucceed()) {
+            ((Throwable) result.getData().getResult()).printStackTrace();
         }
     }
 

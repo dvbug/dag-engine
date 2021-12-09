@@ -15,9 +15,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.github.avivcarmis</groupId>
-            <artifactId>java-red</artifactId>
-            <version>1.0.1</version>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>21.0</version>
         </dependency>
 
         <dependency>

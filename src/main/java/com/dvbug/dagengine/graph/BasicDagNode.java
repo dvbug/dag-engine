@@ -1,4 +1,4 @@
-package com.dvbug.dagengine;
+package com.dvbug.dagengine.graph;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -24,30 +24,26 @@ abstract class BasicDagNode implements DagNode {
     public final GraphData execute(@NonNull GraphData input) {
         // 如果返回结果为null, 或在方法内抛出异常, 或 GraphData.isSucceed() = false 都被认为是执行失败
         // 在执行结束后,将输入参数中携带的前置执行历史转移到返回结果中,同时将本次参数压栈到最新历史中
-        GraphData cloneResult;
+        GraphData result;
         try {
-            GraphData result = doExecute(input);
+            result = doExecute(input);
             if (null == result) {
-                cloneResult = GraphData.ofFailure(new NullPointerException(String.format("%s execute result is null", this.getClass().getSimpleName())));
-            } else {
-                cloneResult = GraphData.ofSucceed(result.getResult()).setNodeName(this.getName());
+                result = GraphData.ofFailure(new NullPointerException(String.format("%s execute result is null", this.getClass().getSimpleName())));
             }
-
         } catch (Throwable t) {
-            cloneResult = GraphData.ofFailure(t).setNodeName(this.getName());
+            result = GraphData.ofFailure(t);
         }
-        cloneResult.cloneHistory(input);
-        cloneResult.pushHistory(input);
-        if (!cloneResult.isSucceed() && (cloneResult.getResult() instanceof Throwable)) {
-            if(cloneResult.getResult() instanceof DagAbortException) {
+
+        if (!result.isSucceed() && (result.getResult() instanceof Throwable)) {
+            if(result.getResult() instanceof DagAbortException) {
                 log.trace("abort exe {} node with param: {}", name, input);
             } else {
-                log.error(String.format("failed exe %s node, some exception raising. param: %s", name, input), (Throwable) cloneResult.getResult());
+                log.error(String.format("failed exe %s node, some exception raising. param: %s", name, input), (Throwable) result.getResult());
             }
         } else {
-            log.trace("exe {} node with param: {}, result: {}", name, input, cloneResult);
+            log.trace("exe {} node with param: {}, result: {}", name, input, result);
         }
-        return cloneResult;
+        return result;
     }
 
     /**

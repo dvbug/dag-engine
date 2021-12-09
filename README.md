@@ -1,5 +1,5 @@
 # dag-engine
-基于 `io.github.avivcarmis.javared.executor.RedSynchronizer` 和`DAG` `(又向无环图)`的策略执行引擎
+基于 `DAG` `(有向无环图)`的策略执行引擎
 
 > Requires JDK 1.8 or higher
 
@@ -10,15 +10,7 @@
 - 支持执行历史输出
 
 ## 依赖
-```xml
-<dependency>
-    <groupId>io.github.avivcarmis</groupId>
-    <artifactId>java-red</artifactId>
-    <version>1.0.1</version>
-</dependency>
-```
-
-### java-red依赖
+java-red依赖
 ```xml
 <dependency>
     <groupId>com.google.guava</groupId>

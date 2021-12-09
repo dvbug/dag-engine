@@ -1,4 +1,4 @@
-package com.dvbug.dagengine;
+package com.dvbug.dagengine.graph;
 
 import lombok.Getter;
 
