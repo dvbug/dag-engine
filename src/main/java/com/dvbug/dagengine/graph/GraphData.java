@@ -1,45 +1,24 @@
 package com.dvbug.dagengine.graph;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.ToString;
 
-@Getter
-@Setter(AccessLevel.PACKAGE)
-//@Accessors(chain = true)
-@ToString
-@RequiredArgsConstructor
-public class GraphData {
-    private final boolean succeed;
-    private final Object result;
-    private final Class<?> resultType;
+/**
+ * 图I/O执行数据接口
+ */
+public interface GraphData {
+    boolean isSucceed();
 
-    /**
-     * 构建一个指定{@link T}类型的成功结果数据
-     * @param input 结果对象
-     */
-    public static <T> GraphData ofInputParam(T input) {
-        return ofSucceed(input);
+    @Getter
+    @ToString
+    @RequiredArgsConstructor
+    class GraphDataFailureHolder implements GraphData {
+        private final boolean succeed = false;
+        private final Throwable throwable;
     }
 
-    /**
-     * 构建一个指定{@link T}类型的成功结果数据
-     * @param result 结果数据对象
-     */
-    public static <T> GraphData ofSucceed(T result) {
-        return new GraphData(true, result, result.getClass());
-    }
-
-    /**
-     * 构建一个指定{@link Throwable}异常的失败结果数据
-     * @param throwable 需要包装的异常实例
-     */
-    public static GraphData ofFailure(Throwable throwable) {
-        return new GraphData(false, throwable, throwable.getClass());
-    }
-
-    /**
-     * 构建一个包括 {@link DagAbortException} 的失败结果数据
-     */
-    public static GraphData ofAbort() {
-        return ofFailure(new DagAbortException());
+    static GraphDataFailureHolder ofFailure(Throwable throwable) {
+        return new GraphDataFailureHolder(throwable);
     }
 }

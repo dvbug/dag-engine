@@ -2,6 +2,9 @@ package com.dvbug.dagengine.graph;
 
 import java.util.List;
 
+/**
+ * DAG 图
+ */
 public interface DagGraph {
     String getGraphId();
 
@@ -21,7 +24,7 @@ public interface DagGraph {
 
     List<List<DagNode>> getPaths();
 
-    DagNode getRootS();
+    DagNode getRootNode();
 
-    DagNode getFinalS();
+    DagNode getFinalNode();
 }

@@ -2,7 +2,6 @@ package com.dvbug.dagengine.graph;
 
 import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -12,17 +11,26 @@ import java.util.*;
  * DAG 图
  */
 @Getter
-@RequiredArgsConstructor
 public class StrategyGraph implements DagGraph {
     private final String graphId;
     private int edgeCount = 0;
-    private DagNode rootS;
-    private DagNode finalS;
+    private DagNode rootNode;
+    private DagNode finalNode;
     @Getter(AccessLevel.NONE)
     private final Set<DagNode> nodes = new HashSet<>();
     @Getter(AccessLevel.NONE)
     private final Map<DagNode, Set<DagNode>> children = new HashMap<>();
     private List<List<DagNode>> paths;
+
+    public StrategyGraph(String graphId) {
+        this.graphId = graphId;
+        init();
+    }
+
+    private void init() {
+        addNode(new RootDagNode());
+        addNode(new FinalDagNode());
+    }
 
     /**
      * 添加节点到DAG图
@@ -43,33 +51,61 @@ public class StrategyGraph implements DagGraph {
         }
 
         if (dagNode.getType() == DagNodeType.ROOT) {
-            this.rootS = dagNode;
+            this.rootNode = dagNode;
         }
         if (dagNode.getType() == DagNodeType.FINAL) {
-            this.finalS = dagNode;
+            this.finalNode = dagNode;
         }
 
         nodes.add(dagNode);
     }
 
     /**
-     * 根据名字添加DAG边
+     * 添加DAG边
      *
      * @param nodeName         边终节点名称
      * @param nodeNameDependOn 边起节点名称
      */
     public void addEdge(String nodeName, String nodeNameDependOn) {
-        Optional<DagNode> node = nodes.stream().filter(n -> n.getName().equals(nodeName)).findFirst();
-        Optional<DagNode> dependNode = nodes.stream().filter(n -> n.getName().equals(nodeNameDependOn)).findFirst();
+        DagNode node = toNode(nodeName);
+        DagNode dependNode = toNode(nodeNameDependOn);
+        addEdge(node, dependNode);
+    }
 
-        if (!node.isPresent()) {
-            throw new IllegalArgumentException(String.format("No %s named [%s] in graph[%s]", DagNode.class.getSimpleName(), nodeName, graphId));
-        }
-        if (!dependNode.isPresent()) {
-            throw new IllegalArgumentException(String.format("No %s named [%s] in graph[%s]", DagNode.class.getSimpleName(), nodeNameDependOn, graphId));
-        }
+    /**
+     * 添加起始边
+     *
+     * @param nodeName 边终节点名称
+     */
+    public void addEdgeFromRoot(String nodeName) {
+        addEdgeFromRoot(toNode(nodeName));
+    }
 
-        addEdge(node.get(), dependNode.get());
+    /**
+     * 添加起始边
+     *
+     * @param dagNode 边终节点
+     */
+    public void addEdgeFromRoot(DagNode dagNode) {
+        addEdge(dagNode, this.rootNode);
+    }
+
+    /**
+     * 添加终点边
+     *
+     * @param nodeName 边起节点名称
+     */
+    public void addEdgeToFinal(String nodeName) {
+        addEdgeToFinal(toNode(nodeName));
+    }
+
+    /**
+     * 添加终点边
+     *
+     * @param dagNode 边起节点
+     */
+    public void addEdgeToFinal(DagNode dagNode) {
+        addEdge(this.finalNode, dagNode);
     }
 
     /**
@@ -84,6 +120,14 @@ public class StrategyGraph implements DagGraph {
             throw new IllegalStateException(String.format("Graph edge[%s] can not independent in graph[%s]", edgeName, graphId));
         }
 
+        if (dagNode.getType() == DagNodeType.ROOT) {
+            throw new IllegalStateException(String.format("Graph edge[%s] is invalid, cannot flow to root node in graph[%s]", edgeName, graphId));
+        }
+
+        if (dependOn.getType() == DagNodeType.FINAL) {
+            throw new IllegalStateException(String.format("Graph edge[%s] is invalid, cannot depend on final node in graph[%s]", edgeName, graphId));
+        }
+
         Set<DagNode> children = this.children.computeIfAbsent(dependOn, k -> new HashSet<>());
         if (children.contains(dagNode)) {
             throw new IllegalStateException(String.format("Graph edge[%s] is existed in graph[%s]", edgeName, graphId));
@@ -95,7 +139,7 @@ public class StrategyGraph implements DagGraph {
 
     @Override
     public boolean isWhole() {
-        return null != rootS && null != finalS && nodes.size() >= 2;
+        return null != rootNode && null != finalNode && nodes.size() >= 2;
     }
 
     /**
@@ -134,7 +178,7 @@ public class StrategyGraph implements DagGraph {
         Stack<DagNode> nodes = new Stack<>();
 
         public PathGenerator(StrategyGraph graph) {
-            find(getRootS(), graph);
+            find(StrategyGraph.this.getRootNode(), graph);
         }
 
         private void find(DagNode node, StrategyGraph graph) {
@@ -205,5 +249,13 @@ public class StrategyGraph implements DagGraph {
 
     private String edgeName(DagNode from, DagNode to) {
         return String.format("%s->%s", from.getName(), to.getName());
+    }
+
+    private DagNode toNode(String name) {
+        Optional<DagNode> node = nodes.stream().filter(n -> n.getName().equals(name)).findFirst();
+        if (!node.isPresent()) {
+            throw new IllegalArgumentException(String.format("No %s named [%s] in graph[%s]", DagNode.class.getSimpleName(), name, graphId));
+        }
+        return node.get();
     }
 }

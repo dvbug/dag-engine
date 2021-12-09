@@ -24,6 +24,7 @@ final class StrategyGraphSynchronizer extends RedSynchronizer<ExecuteContext, Ex
     @RequiredArgsConstructor
     static class SubChainSynchronizer extends RedSynchronizer<ExecuteContext, ExecuteContext> {
         final java.util.function.Function<ExecuteContext, Result<ExecuteContext>> subChain;
+
         @Override
         protected Result<ExecuteContext> handle(ExecuteContext ExecuteContext) {
             return subChain.apply(ExecuteContext);
@@ -52,7 +53,7 @@ final class StrategyGraphSynchronizer extends RedSynchronizer<ExecuteContext, Ex
     private java.util.function.Function<ExecuteContext, Result<ExecuteContext>> autoChainBuild() {
         return (input) -> {
             Result<ExecuteContext> chain = produce(ExecuteContext.class).byExecuting(() -> input);
-            return buildDeepin(chain, graph.getRootS());
+            return buildDeepin(chain, graph.getRootNode());
         };
     }
 

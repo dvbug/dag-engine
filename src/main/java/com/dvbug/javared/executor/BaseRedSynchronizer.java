@@ -13,7 +13,7 @@ import java.util.concurrent.Future;
  * An abstract class to implement common functionality of both
  * {@link RedSynchronizer} and {@link RedVoidSynchronizer}.
  * <p>
- * The Synchronizers instances use a Synchronizer idiom to define the different
+ * The Synchronizer instances use a Synchronizer idiom to define the different
  * aspects of the execution.
  * Synchronizer idiom is separated into statements. Each statement constructs a single
  * execution which can either be resulted in a value, or void.

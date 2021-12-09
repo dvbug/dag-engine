@@ -16,6 +16,7 @@ public class ExecuteContext {
         private final GraphData result;
         private final String executeNode;
     }
+
     @Getter
     @Setter(AccessLevel.MODULE)
     @Accessors(chain = true)
@@ -34,9 +35,9 @@ public class ExecuteContext {
     }
 
     ExecuteContext clone(ExecuteContext context) {
-        if(null != context) {
+        if (null != context) {
             this.setData(context.getData()).setExecuteNode(context.getExecuteNode());
-            if(!context.history.isEmpty()) {
+            if (!context.history.isEmpty()) {
                 this.history.clear();
                 context.history.forEach(this.history::push);
             }

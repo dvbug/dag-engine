@@ -29,15 +29,15 @@ public final class DagGraphExecutor {
 
         GraphData data = null;
         List<ExecuteResult.History<GraphData>> history = null;
-        if(null != executeContext) {
+        if (null != executeContext) {
             data = executeContext.getData();
             history = Arrays.stream(executeContext.getHistory()).map(h -> new ExecuteResult.History<>(h.getResult(), h.getExecuteNode())).collect(Collectors.toList());
         }
 
-        if(null == data) {
+        if (null == data) {
             data = GraphData.ofFailure(new NullPointerException("no result"));
         }
-        if(null == history) {
+        if (null == history) {
             history = new ArrayList<>();
         }
         return new ExecuteResult<>(data, history);
